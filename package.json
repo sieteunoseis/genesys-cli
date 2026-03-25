@@ -1,5 +1,5 @@
 {
-  "name": "genesys-cli",
+  "name": "@sieteunoseis/genesys-cli",
   "version": "0.1.0",
   "description": "CLI for Genesys Cloud CX via Platform API",
   "author": "sieteunoseis",
