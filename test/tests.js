@@ -122,6 +122,22 @@ const queuesHelp = run(["queues", "--help"]);
 assert(queuesHelp.includes("list"), "should list 'list'");
 console.log("  PASS");
 
+console.log("Test: edges --help shows subcommands");
+const edgesHelp = run(["edges", "--help"]);
+assert(edgesHelp.includes("list"), "should list 'list' subcommand");
+assert(edgesHelp.includes("sites"), "should list 'sites' subcommand");
+console.log("  PASS");
+
+console.log("Test: agents --help shows list subcommand");
+const agentsHelp = run(["agents", "--help"]);
+assert(agentsHelp.includes("list"), "should list 'list' subcommand");
+console.log("  PASS");
+
+console.log("Test: audit --help shows list subcommand");
+const auditHelp = run(["audit", "--help"]);
+assert(auditHelp.includes("list"), "should list 'list' subcommand");
+console.log("  PASS");
+
 cleanup();
 
 console.log("\nAll tests passed.");
