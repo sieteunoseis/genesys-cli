@@ -74,35 +74,40 @@ module.exports = function registerTrunksCommand(program) {
           return;
         }
 
+        // Build trunk ID → name lookup
+        const trunkNames = {};
+        for (const t of entities) {
+          let name = t.name || "";
+          name = name.replace(
+            /\s+(?:Trunk\s+)?[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi,
+            "",
+          );
+          trunkNames[t.id] = name;
+        }
+
         const metricsResp = await client.get(
           "/telephony/providers/edges/trunks/metrics",
           { params: { trunkIds: trunkIds.join(",") } },
         );
-        const metrics = metricsResp.data.entities || metricsResp.data || [];
-        const data = Array.isArray(metrics)
-          ? metrics.map((m) => {
-              let name = m.trunk && m.trunk.name ? m.trunk.name : "";
-              name = name.replace(
-                /\s+(?:Trunk\s+)?[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi,
-                "",
-              );
-              return {
-                name,
-                callsInProgress:
-                  m.calls && m.calls.inProgress != null
-                    ? m.calls.inProgress
-                    : "",
-                callsCompleted:
-                  m.calls && m.calls.completed != null ? m.calls.completed : "",
-                callsErrored:
-                  m.calls && m.calls.errored != null ? m.calls.errored : "",
-                qos:
-                  m.qos && m.qos.mismatchCount != null
-                    ? m.qos.mismatchCount
-                    : "",
-              };
-            })
-          : metrics;
+        const metrics = Array.isArray(metricsResp.data)
+          ? metricsResp.data
+          : metricsResp.data.entities || [];
+        const data = metrics.map((m) => {
+          const tid = m.trunk && m.trunk.id ? m.trunk.id : "";
+          return {
+            name: trunkNames[tid] || tid,
+            inbound:
+              m.calls && m.calls.inboundCallCount != null
+                ? m.calls.inboundCallCount
+                : "",
+            outbound:
+              m.calls && m.calls.outboundCallCount != null
+                ? m.calls.outboundCallCount
+                : "",
+            qosMismatch:
+              m.qos && m.qos.mismatchCount != null ? m.qos.mismatchCount : "",
+          };
+        });
         await printResult(data, globalOpts.format);
       } catch (err) {
         printError(err);
