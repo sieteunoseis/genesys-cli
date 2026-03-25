@@ -27,7 +27,6 @@ program
   .option("--no-audit", "disable audit logging for this command")
   .option("--debug", "enable debug logging");
 
-// Commands registered in subsequent tasks
 require("./commands/config.js")(program);
 require("./commands/doctor.js")(program);
 require("./commands/conversations.js")(program);
