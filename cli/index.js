@@ -29,7 +29,7 @@ program
 
 // Commands registered in subsequent tasks
 require("./commands/config.js")(program);
-// require("./commands/doctor.js")(program);
+require("./commands/doctor.js")(program);
 // require("./commands/conversations.js")(program);
 // require("./commands/trunks.js")(program);
 // require("./commands/queues.js")(program);
