@@ -1,8 +1,8 @@
 # Genesys CLI
 
-[![npm version](https://img.shields.io/npm/v/genesys-cli.svg)](https://www.npmjs.com/package/genesys-cli)
+[![npm version](https://img.shields.io/npm/v/@sieteunoseis/genesys-cli.svg)](https://www.npmjs.com/package/@sieteunoseis/genesys-cli)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Node.js Version](https://img.shields.io/node/v/genesys-cli.svg)](https://nodejs.org)
+[![Node.js Version](https://img.shields.io/node/v/@sieteunoseis/genesys-cli.svg)](https://nodejs.org)
 [![Skills](https://img.shields.io/badge/skills.sh-genesys--cli-blue)](https://skills.sh/sieteunoseis/genesys-cli)
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-support-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/automatebldrs)
 
@@ -11,13 +11,13 @@ A CLI for Genesys Cloud CX via Platform API. Query conversation history, monitor
 ## Installation
 
 ```bash
-npm install -g genesys-cli
+npm install -g @sieteunoseis/genesys-cli
 ```
 
 Or run without installing:
 
 ```bash
-npx genesys-cli --help
+npx @sieteunoseis/genesys-cli --help
 ```
 
 ### AI Agent Skills
