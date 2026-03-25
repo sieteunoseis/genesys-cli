@@ -95,6 +95,7 @@ module.exports = function registerConversationsCommand(program) {
           const cleanNumber = (n) =>
             n ? n.replace(/^tel:\+?|^sip:/i, "").replace(/@.*$/, "") : "";
           return {
+            conversationId: c.conversationId || "",
             time: c.conversationStart
               ? new Date(c.conversationStart).toLocaleTimeString()
               : "",

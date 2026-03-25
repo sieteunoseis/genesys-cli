@@ -35,5 +35,6 @@ require("./commands/queues.js")(program);
 require("./commands/edges.js")(program);
 require("./commands/agents.js")(program);
 require("./commands/audit.js")(program);
+require("./commands/external-contacts.js")(program);
 
 program.parse();
