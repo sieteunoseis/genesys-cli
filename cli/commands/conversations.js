@@ -92,13 +92,14 @@ module.exports = function registerConversationsCommand(program) {
             firstParticipant.sessions[0];
           const firstSegment =
             firstSession && firstSession.segments && firstSession.segments[0];
+          const cleanNumber = (n) =>
+            n ? n.replace(/^tel:\+?|^sip:/i, "").replace(/@.*$/, "") : "";
           return {
-            conversationStart: c.conversationStart
-              ? new Date(c.conversationStart).toLocaleString()
+            time: c.conversationStart
+              ? new Date(c.conversationStart).toLocaleTimeString()
               : "",
-            conversationId: c.conversationId || "",
-            ani: firstSession ? firstSession.ani || "" : "",
-            dnis: firstSession ? firstSession.dnis || "" : "",
+            caller: cleanNumber(firstSession ? firstSession.ani : ""),
+            callee: cleanNumber(firstSession ? firstSession.dnis : ""),
             direction: firstSession ? firstSession.direction || "" : "",
             disconnectType: firstSegment
               ? firstSegment.disconnectType || ""
