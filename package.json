@@ -18,7 +18,7 @@
     "node": ">=18.0.0"
   },
   "bin": {
-    "genesys-cli": "./bin/genesys-cli.js"
+    "genesys-cli": "bin/genesys-cli.js"
   },
   "scripts": {
     "test": "node ./test/tests.js"
