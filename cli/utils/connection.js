@@ -1,6 +1,5 @@
 "use strict";
 
-const axios = require("axios");
 const {
   getActiveOrg,
   hasSsPlaceholders,
@@ -83,7 +82,6 @@ function resolveRegion(region) {
     .replace(/\/$/, "");
   const mapped = REGION_MAP[key];
   if (mapped) return mapped;
-  // If it contains a dot, assume it's a full domain
   if (key.includes(".")) {
     return { login: `login.${key}`, api: `api.${key}` };
   }
@@ -99,17 +97,27 @@ async function getToken(loginDomain, clientId, clientSecret) {
   if (cachedToken && Date.now() < tokenExpiry - 60000) {
     return cachedToken;
   }
-  const resp = await axios.post(
-    `https://${loginDomain}/oauth/token`,
-    "grant_type=client_credentials",
-    {
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      auth: { username: clientId, password: clientSecret },
-      timeout: 10000,
+
+  const authHeader =
+    "Basic " + Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
+
+  const resp = await fetch(`https://${loginDomain}/oauth/token`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      Authorization: authHeader,
     },
-  );
-  cachedToken = resp.data.access_token;
-  tokenExpiry = Date.now() + resp.data.expires_in * 1000;
+    body: "grant_type=client_credentials",
+    signal: AbortSignal.timeout(10000),
+  });
+
+  if (!resp.ok) {
+    throw new Error(`OAuth token request failed: HTTP ${resp.status}`);
+  }
+
+  const data = await resp.json();
+  cachedToken = data.access_token;
+  tokenExpiry = Date.now() + data.expires_in * 1000;
   return cachedToken;
 }
 
@@ -166,66 +174,96 @@ async function resolveConfig(flags = {}) {
 async function createClient(flags = {}) {
   const config = await resolveConfig(flags);
   const regionInfo = resolveRegion(config.region);
-  const token = await getToken(
+  let token = await getToken(
     regionInfo.login,
     config.clientId,
     config.clientSecret,
   );
 
-  const client = axios.create({
-    baseURL: `https://${regionInfo.api}/api/v2`,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    timeout: 30000,
-  });
+  const baseURL = `https://${regionInfo.api}/api/v2`;
+  const debug = !!flags.debug;
 
-  // Retry on 401 (token expired)
-  client.interceptors.response.use(null, async (error) => {
-    if (
-      error.response &&
-      error.response.status === 401 &&
-      !error.config._retried
-    ) {
-      error.config._retried = true;
+  async function request(method, urlPath, options = {}) {
+    const qs = options.params
+      ? new URLSearchParams(options.params).toString()
+      : "";
+    const url = `${baseURL}${urlPath}${qs ? "?" + qs : ""}`;
+
+    if (debug) {
+      process.stderr.write(`DEBUG: ${method.toUpperCase()} ${url}\n`);
+    }
+
+    const fetchOpts = {
+      method,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        ...options.headers,
+      },
+      signal: AbortSignal.timeout(30000),
+    };
+
+    if (options.data !== undefined) {
+      fetchOpts.body = JSON.stringify(options.data);
+    }
+
+    let response = await fetch(url, fetchOpts);
+
+    // Retry on 401 (token expired) — refresh and retry once
+    if (response.status === 401) {
       cachedToken = null;
       tokenExpiry = 0;
-      const newToken = await getToken(
+      token = await getToken(
         regionInfo.login,
         config.clientId,
         config.clientSecret,
       );
-      error.config.headers.Authorization = `Bearer ${newToken}`;
-      return client.request(error.config);
+      fetchOpts.headers.Authorization = `Bearer ${token}`;
+      response = await fetch(url, fetchOpts);
     }
-    // Retry on 429 with backoff
-    if (error.response && error.response.status === 429) {
-      const retryCount = error.config._retryCount || 0;
-      if (retryCount < 3) {
-        error.config._retryCount = retryCount + 1;
-        const delay = Math.pow(2, retryCount) * 1000;
-        await new Promise((r) => setTimeout(r, delay));
-        return client.request(error.config);
-      }
-    }
-    return Promise.reject(error);
-  });
 
-  if (flags.debug) {
-    client.interceptors.request.use((req) => {
+    // Retry on 429 with exponential backoff (up to 3 attempts)
+    let retryCount = 0;
+    while (response.status === 429 && retryCount < 3) {
+      const delay = Math.pow(2, retryCount) * 1000;
+      await new Promise((r) => setTimeout(r, delay));
+      retryCount++;
+      response = await fetch(url, fetchOpts);
+    }
+
+    if (debug) {
       process.stderr.write(
-        `DEBUG: ${req.method.toUpperCase()} ${req.baseURL}${req.url}\n`,
+        `DEBUG: ${response.status} ${response.statusText}\n`,
       );
-      return req;
-    });
-    client.interceptors.response.use((resp) => {
-      process.stderr.write(`DEBUG: ${resp.status} ${resp.statusText}\n`);
-      return resp;
-    });
+    }
+
+    if (!response.ok) {
+      const body = await response.text();
+      const err = new Error(`HTTP ${response.status}: ${body}`);
+      err.response = { status: response.status, data: body };
+      throw err;
+    }
+
+    const text = await response.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = text;
+    }
+
+    return { status: response.status, statusText: response.statusText, data };
   }
 
-  return client;
+  return {
+    get: (path, opts) => request("GET", path, opts),
+    post: (path, data, opts) => request("POST", path, { ...opts, data }),
+    put: (path, data, opts) => request("PUT", path, { ...opts, data }),
+    delete: (path, opts) => request("DELETE", path, opts),
+    patch: (path, data, opts) => request("PATCH", path, { ...opts, data }),
+    defaults: { baseURL },
+  };
 }
 
 module.exports = {
